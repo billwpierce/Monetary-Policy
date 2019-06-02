@@ -16,7 +16,7 @@ struct State {
 };
 
 double calc_du(double i, double t, double phi) {
-    return 0.04 * i + 0.012 + 0.0092 * cos(1.15 * t + phi);
+    return 0.4 * i + 0.012 + 0.0092 * cos(1.15 * t + phi);
 }
 
 double calc_di(double u) { return (-0.73 * u) + 0.0438; }
@@ -31,6 +31,7 @@ State calc_state(State prev_state, double dt, double phi) {
     curr_state.di = calc_di(curr_state.u);
     curr_state.du = calc_du(curr_state.i, curr_state.t, phi);
     curr_state.m = calc_m(curr_state.t, phi);
+    curr_state.g = curr_state.m - curr_state.i;
     return curr_state;
 }
 
@@ -68,7 +69,6 @@ int main() {
             }
             state_map.push_back(curr_state);
         }
-        cout << num_cycles << "\n";
         double recession_percentage = recession_count / num_cycles;
         double high_unemployment_percentage =
             high_unemployment_count / num_cycles;
