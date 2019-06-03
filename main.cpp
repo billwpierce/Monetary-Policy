@@ -1,9 +1,14 @@
 #include <math.h>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
+#include <string>
 #include <vector>
 
 using namespace std;
+
+ofstream outputFile;
+std::string filename = "output.csv";
 
 struct State {
     double t;
@@ -42,7 +47,18 @@ State calc_state(State prev_state, double dt, double phi) {
 }
 
 State_Results calc_phi_results(State state_initial, double phi,
-                               double num_cycles, double dt) {
+                               double num_cycles, double dt,
+                               bool write_to_csv) {
+    if (write_to_csv) {
+        outputFile.open(filename);
+        outputFile << "U (Unemployment)"
+                   << ","
+                   << "G (GDP)"
+                   << ","
+                   << "I (Inflation)"
+                   << ","
+                   << "M (Money Supply)" << std::endl;
+    }
     vector<State> state_map = {state_initial};
     state_map[0].du = calc_du(state_map[0].i, state_map[0].t, phi);
     state_map[0].m = calc_m(state_map[0].t, phi);
@@ -64,19 +80,25 @@ State_Results calc_phi_results(State state_initial, double phi,
         if (curr_state.u >= .08) {
             high_unemployment_count += 1;
         }
+        if (write_to_csv) {
+            outputFile << curr_state.u << "," << curr_state.g << ","
+                       << curr_state.i << "," << curr_state.m << std::endl;
+        }
         state_map.push_back(curr_state);
     }
     State_Results results;
     results.phi = phi;
     results.recession_percentage = recession_count / num_cycles;
     results.high_unemployment_percentage = high_unemployment_count / num_cycles;
+    if (write_to_csv) {
+        outputFile.close();
+    }
     return results;
 }
 
-int main() {
+int main(int argc, char** argv) {
     double dt = 0.001;
-    int num_cycles = (int)10 * ceil(((40 * M_PI) / 23) / dt);
-    // vector<double> phi_choices = {1, 2, M_PI};
+    int num_cycles = (int)2 * ceil(((40 * M_PI) / 23) / dt);
     double phi_init = 3;
     double accuracy_digit = 5;
     State state_initial;
@@ -89,7 +111,7 @@ int main() {
     double run = true;
     while (run) {  // Currently optimizes for unemployment percentage
         State_Results same_phi =
-            calc_phi_results(state_initial, curr_phi, num_cycles, dt);
+            calc_phi_results(state_initial, curr_phi, num_cycles, dt, false);
         cout << "Phi: " << curr_phi << "\n";
         cout << "Recession Percentage: " << same_phi.recession_percentage * 100
              << "%\n";
@@ -98,19 +120,18 @@ int main() {
         double high_phi = curr_phi + pow(10, -1 * curr_accuracy_digit);
         double low_phi = curr_phi - pow(10, -1 * curr_accuracy_digit);
         State_Results hp_results =
-            calc_phi_results(state_initial, high_phi, num_cycles, dt);
+            calc_phi_results(state_initial, high_phi, num_cycles, dt, false);
         State_Results lp_results =
-            calc_phi_results(state_initial, low_phi, num_cycles, dt);
-        if (hp_results.high_unemployment_percentage <
-            same_phi.high_unemployment_percentage) {
-            if (lp_results.high_unemployment_percentage <
-                hp_results.high_unemployment_percentage) {
+            calc_phi_results(state_initial, low_phi, num_cycles, dt, false);
+        if (hp_results.recession_percentage < same_phi.recession_percentage) {
+            if (lp_results.recession_percentage <
+                hp_results.recession_percentage) {
                 curr_phi = low_phi;
             } else {
                 curr_phi = high_phi;
             }
-        } else if (lp_results.high_unemployment_percentage <
-                   same_phi.high_unemployment_percentage) {
+        } else if (lp_results.recession_percentage <
+                   same_phi.recession_percentage) {
             curr_phi = low_phi;
         } else {
             if (curr_accuracy_digit >= accuracy_digit) {
@@ -120,13 +141,6 @@ int main() {
             }
         }
     }
-
-    // for (int n = 0; n < phi_choices.size(); n++) {
-    //     double phi = phi_choices[n];
-
-    //     cout << "Phi: " << phi << "\n";
-    //     cout << "Recession Percentage: " << recession_percentage * 100 <<
-    //     "%\n"; cout << "High Unemployment Percentage: "
-    //          << high_unemployment_percentage * 100 << "%\n";
-    // }
+    calc_phi_results(state_initial, curr_phi, num_cycles, dt, false);
+    return 0;
 }
