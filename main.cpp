@@ -26,14 +26,40 @@ struct State_Results {
     double high_unemployment_percentage;
 };
 
+/**
+ * Calculates the derivative of unemployment.
+ * @param i the inflation at a timestep.
+ * @param t the time.
+ * @param phi the phase shift of the monetary policy equation.
+ * @return the derivative of inflation.
+ */
 double calc_du(double i, double t, double phi) {
     return 0.4 * i + 0.012 + 0.0092 * cos(1.15 * t + phi);
 }
 
+/**
+ * Calculates the derivative of inflation based on unemployment.
+ * @param u the unemployment at a timestep.
+ * @return the derivative of inflation.
+ */
 double calc_di(double u) { return (-0.73 * u) + 0.0438; }
 
+/**
+ * Calculates the monetary policy at a given time.
+ * @param t the time.
+ * @param phi the phase shift of the monetary policy function.
+ * @return m, monetary policy.
+ */
 double calc_m(double t, double phi) { return 0.02 * sin(1.15 * t + phi); }
 
+/**
+ * Calculates the current state.
+ * @param prev_state the previous state, as the states are generated
+ * recursively.
+ * @param dt the size of the timestep.
+ * @param phi the phase shift of the monetary function M.
+ * @return returns the current state.
+ */
 State calc_state(State prev_state, double dt, double phi) {
     State curr_state;
     curr_state.t = prev_state.t + dt;
@@ -45,7 +71,18 @@ State calc_state(State prev_state, double dt, double phi) {
     curr_state.g = curr_state.m - curr_state.i;
     return curr_state;
 }
-
+/**
+ * Returns the State_Results—that is, the % of time in recession and the % of
+ * time with >8% unemployment.
+ * @param state_initial the initial state of the simulation.
+ * @param phi the phase shift of the monetary policy function.
+ * @param num_cycles the number of time steps to iterate through.
+ * @param dt the size of each time step, used for Euler's method of differential
+ * equations. The results get more accurate as dt gets smaller, but the
+ * processing time increases.
+ * @param write_to_csv determines whether to write the values to a csv file.
+ * @return returns an instance of the State_Results struct.
+ */
 State_Results calc_phi_results(State state_initial, double phi,
                                double num_cycles, double dt,
                                bool write_to_csv) {
@@ -97,10 +134,15 @@ State_Results calc_phi_results(State state_initial, double phi,
 }
 
 int main(int argc, char** argv) {
-    double dt = 0.001;
-    int num_cycles = (int)2 * ceil(((40 * M_PI) / 23) / dt);
-    double phi_init = 3;
-    double accuracy_digit = 5;
+    double dt = 0.001;  // The timestep.
+    int num_cycles =
+        (int)2 *
+        ceil(((40 * M_PI) / 23) /
+             dt);  // The number of time steps to iterate you, usually an
+                   // integer (in this case 2) multiplied by the size of one
+                   // period of the monetary policy function.
+    double phi_init = 3;  // The initial phi for iteration (doesn't matter).
+    double accuracy_digit = 5;  // The number of digits to find
     State state_initial;
     state_initial.t = 0;
     state_initial.u = .039;
@@ -123,6 +165,10 @@ int main(int argc, char** argv) {
             calc_phi_results(state_initial, high_phi, num_cycles, dt, false);
         State_Results lp_results =
             calc_phi_results(state_initial, low_phi, num_cycles, dt, false);
+        // Compares the current phi value with a phi just above and just below.
+        // If curr_phi is the most optimized, then it'll go one decimal more
+        // accurate (or stop), and otherwise it'll go towards the more optimized
+        // phi.
         if (hp_results.recession_percentage < same_phi.recession_percentage) {
             if (lp_results.recession_percentage <
                 hp_results.recession_percentage) {
